@@ -7,7 +7,7 @@ pipeline {
     }
 
     environment {
-        AWS_REGION = 'ap-northeast-2'
+        AWS_DEFAULT_REGION = 'ap-northeast-2' // AWS_DEFAULT_REGION 대신 AWS_REGION 사용
         ECR_REPO = '891377163278.dkr.ecr.ap-northeast-2.amazonaws.com/jenkins'
     }
 
@@ -30,16 +30,18 @@ pipeline {
                     ENTRYPOINT ["node","server.js"]
                     EXPOSE 8888
                     """
-                    writeFile file: 'dockerfile', text: dockerfileContent
+                    writeFile file: 'Dockerfile', text: dockerfileContent // 'Dockerfile' 대신 'dockerfile'을 사용하시면 안 됩니다.
                 }
             }
         }
 
         stage('Image push to ECR') {
             steps {
-                sh 'aws ecr-public get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin 891377163278.dkr.ecr.ap-northeast-2.amazonaws.com'
-                sh 'docker build -t 891377163278.dkr.ecr.ap-northeast-2.amazonaws.com/jenkins:$BUILD_NUMBER .'
-                sh 'docker push 891377163278.dkr.ecr.ap-northeast-2.amazonaws.com/jenkins:$BUILD_NUMBER'
+                script {
+                    sh 'aws ecr-public get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO'
+                    sh "docker build -t $ECR_REPO:latest ." // $BUILD_NUMBER 대신 latest 태그 사용
+                    sh "docker push $ECR_REPO:latest" // $BUILD_NUMBER 대신 latest 태그 사용
+                }
             }
         }
     }
