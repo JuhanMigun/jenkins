@@ -9,7 +9,7 @@ pipeline {
     stages {
         stage('Jenkins Git Progress') {
             steps {
-                git branch: 'main',
+                git branch: 'master',
                 url: 'https://github.com/JuhanMigun/jenkins.git'
             }
         }
