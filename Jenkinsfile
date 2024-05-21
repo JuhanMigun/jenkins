@@ -6,6 +6,11 @@ pipeline {
         nodejs 'nodejs'
     }
 
+    environment {
+        AWS_REGION = 'ap-northeast-2'
+        ECR_REPO = '891377163278.dkr.ecr.ap-northeast-2.amazonaws.com/jenkins'
+    }
+
     stages {
         stage('Jenkins Git Progress') {
             steps {
@@ -16,14 +21,17 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh 'echo "FROM node:18" > dockerfile' 
-                sh 'echo "WORKDIR /root/web-1" >> dockerfile' 
-                sh 'echo "COPY ./ ./" >> dockerfile'
-                sh 'echo "RUN npm install" >> dockerfile'
-                sh '''
-                echo 'ENTRYPOINT ["node","server.js"]' >> dockerfile
-                '''
-                sh 'echo "EXPOSE 8888" >> dockerfile'
+                script {
+                    def dockerfileContent = """
+                    FROM node:18
+                    WORKDIR /root/web-1
+                    COPY ./ ./
+                    RUN npm install
+                    ENTRYPOINT ["node","server.js"]
+                    EXPOSE 8888
+                    """
+                    writeFile file: 'dockerfile', text: dockerfileContent
+                }
             }
         }
 
