@@ -15,14 +15,14 @@ pipeline {
     }
 
     stages {
-        stage('Jenkins Git Progress') {
+        stage('Jenkins Git Clone') {
             steps {
                 git branch: 'master',
                 url: 'https://github.com/JuhanMigun/jenkins.git'
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Docker Image Build') {
             steps {
                 script {
                     def dockerfileContent = """
@@ -38,17 +38,19 @@ pipeline {
             }
         }
 
-        stage('Build and Push Docker Image') {
+        stage('Docker Image Build and Push') {
             steps {
                 script {
                     def dockerBuildCommand = "docker build -t ${env.DOCKER_HUB_REPO}:${env.BUILD_NUMBER} ."
-                    def dockerLoginCommand = "docker login -u your-dockerhub-username -p your-dockerhub-password"  // Docker Hub 로그인 명령어 추가
+                    def dockerLoginCommand = "docker login -u kimjuhan -p mh241573!!"  // Docker Hub 로그인 명령어 추가
                     def dockerPushCommand = "docker push ${env.DOCKER_HUB_REPO}:${env.BUILD_NUMBER}"
 
                     if (isUnix()) {
-                        sh dockerBuildCommand
-                        sh dockerLoginCommand
-                        sh dockerPushCommand
+                        sh """
+                        ${dockerBuildCommand}
+                        ${dockerLoginCommand}
+                        ${dockerPushCommand}
+                        """
                     } else {
                         bat """
                         ${dockerBuildCommand}
