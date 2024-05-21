@@ -9,6 +9,9 @@ pipeline {
     environment {
         AWS_REGION = 'ap-northeast-2'
         ECR_REPO = '891377163278.dkr.ecr.ap-northeast-2.amazonaws.com/jenkins'
+        DOCKER_PATH = 'C:\\Program Files\\Docker\\Docker\\Resources\\bin'  // Docker 경로 설정
+        PATH = "${env.PATH};${env.DOCKER_PATH}"
+        DOCKER_HUB_REPO = 'kimjuhan/jenkins'  // Docker Hub 레포지토리 정보 추가
     }
 
     stages {
@@ -35,56 +38,24 @@ pipeline {
             }
         }
 
-        stage('Image push to ECR') {
+        stage('Build and Push Docker Image') {
             steps {
                 script {
+                    def dockerBuildCommand = "docker build -t ${env.DOCKER_HUB_REPO}:${env.BUILD_NUMBER} ."
+                    def dockerLoginCommand = "docker login -u your-dockerhub-username -p your-dockerhub-password"  // Docker Hub 로그인 명령어 추가
+                    def dockerPushCommand = "docker push ${env.DOCKER_HUB_REPO}:${env.BUILD_NUMBER}"
+
                     if (isUnix()) {
-                        sh 'aws ecr-public get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO'
-                        sh 'docker build -t $ECR_REPO:$BUILD_NUMBER .'
-                        sh 'docker push $ECR_REPO:$BUILD_NUMBER'
+                        sh dockerBuildCommand
+                        sh dockerLoginCommand
+                        sh dockerPushCommand
                     } else {
-                        bat 'aws ecr-public get-login-password --region %AWS_REGION% | docker login --username AWS --password-stdin %ECR_REPO%'
-                        bat 'docker build -t %ECR_REPO%:%BUILD_NUMBER% .'
-                        bat 'docker push %ECR_REPO%:%BUILD_NUMBER%'
+                        bat """
+                        ${dockerBuildCommand}
+                        ${dockerLoginCommand}
+                        ${dockerPushCommand}
+                        """
                     }
                 }
             }
         }
-
-        stage('Update Manifest ArgoCD') {
-            steps {
-                script {
-                    if (isUnix()) {
-                        sh 'git config --global user.email "gong2401@gmail.com"'
-                        sh 'git config --global user.name "JuhanMigun"'
-                    } else {
-                        bat 'git config --global user.email "gong2401@gmail.com"'
-                        bat 'git config --global user.name "JuhanMigun"'
-                    }
-
-                    withCredentials([usernamePassword(credentialsId: 'github-sjh', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
-                        if (isUnix()) {
-                            sh '''
-                            git checkout argocd
-                            git pull origin argocd
-                            sed -E -i "s~(image: $ECR_REPO:)(backend-v[0-9]+.[0-9]+|[0-9]+)~image: $ECR_REPO:$BUILD_NUMBER~g" argo/infra.yaml
-                            git add argo/infra.yaml
-                            git commit -m "Update image in infra.yaml"
-                            git push origin argocd
-                            '''
-                        } else {
-                            bat '''
-                            git checkout argocd
-                            git pull origin argocd
-                            powershell -Command "(Get-Content argo/infra.yaml) -replace '(image: $ECR_REPO:)(backend-v[0-9]+.[0-9]+|[0-9]+)', 'image: $ECR_REPO:$BUILD_NUMBER' | Set-Content argo/infra.yaml"
-                            git add argo/infra.yaml
-                            git commit -m "Update image in infra.yaml"
-                            git push origin argocd
-                            '''
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
